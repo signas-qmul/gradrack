@@ -1,0 +1,2 @@
+[flake8]
+per_file_ignores = 'test/test_oscillator.py:F811,F401'
