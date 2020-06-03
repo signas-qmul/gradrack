@@ -4,7 +4,7 @@ import pytest
 from pytest_mock import mocker
 import torch
 
-from gradrack.oscillators import Oscillator
+from gradrack.oscillators import Oscillator, LengthMismatchError
 
 
 # FIXTURES
@@ -118,3 +118,16 @@ def test_computes_phase_from_phase_mod_with_time_axis(mock_dummy_osc):
     
     args = mock_dummy_osc.generate.call_args[0]
     torch.testing.assert_allclose(args[0], expected_phase)
+
+
+def test_throws_if_no_length_given_when_frequency_and_phase_mod_are_scalar(
+        mock_dummy_osc):
+    dummy_freq = torch.Tensor([1])
+    dummy_phase_mod = torch.Tensor([0])
+    dummy_sample_rate = 4
+
+    with pytest.raises(LengthMismatchError):
+        mock_dummy_osc(
+            dummy_freq,
+            dummy_phase_mod,
+            sample_rate=dummy_sample_rate)

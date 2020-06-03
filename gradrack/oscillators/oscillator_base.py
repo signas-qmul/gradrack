@@ -11,7 +11,11 @@ class Oscillator(torch.nn.Module, ABC):
 
     def forward(self, frequency, phase_mod, length=None, sample_rate=None):
         if length is None:
-            length = phase_mod.shape[-1]
+            if phase_mod.shape[-1] > 1:
+                length = phase_mod.shape[-1]
+            elif frequency.shape[-1] == 1 and phase_mod.shape[-1] == 1:
+                raise LengthMismatchError("Sample length must be provided " +
+                        "for scalar frequency and phase_mod parameters")
 
         if frequency.shape[-1] == 1:
             frequency =\
@@ -31,3 +35,7 @@ class Oscillator(torch.nn.Module, ABC):
     @abstractmethod
     def generate(self, phase):
         pass
+
+
+class LengthMismatchError(Exception):
+    pass
