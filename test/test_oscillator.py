@@ -131,3 +131,32 @@ def test_throws_if_no_length_given_when_frequency_and_phase_mod_are_scalar(
             dummy_freq,
             dummy_phase_mod,
             sample_rate=dummy_sample_rate)
+
+def test_throws_if_length_given_when_frequency_time_axis_used(
+        mock_dummy_osc):
+    dummy_freq = torch.Tensor([1, 2, 3])
+    dummy_phase_mod = torch.Tensor([0])
+    dummy_length = 4
+    dummy_sample_rate = 4
+
+    with pytest.raises(LengthMismatchError):
+        mock_dummy_osc(
+            dummy_freq,
+            dummy_phase_mod,
+            length=dummy_length,
+            sample_rate=dummy_sample_rate)
+
+
+def test_throws_if_length_given_when_frequency_time_axis_used(
+        mock_dummy_osc):
+    dummy_freq = torch.Tensor([0])
+    dummy_phase_mod = torch.Tensor([1, 2, 3])
+    dummy_length = 4
+    dummy_sample_rate = 4
+
+    with pytest.raises(LengthMismatchError):
+        mock_dummy_osc(
+            dummy_freq,
+            dummy_phase_mod,
+            length=dummy_length,
+            sample_rate=dummy_sample_rate)

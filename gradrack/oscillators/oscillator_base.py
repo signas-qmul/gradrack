@@ -16,6 +16,11 @@ class Oscillator(torch.nn.Module, ABC):
             elif frequency.shape[-1] == 1 and phase_mod.shape[-1] == 1:
                 raise LengthMismatchError("Sample length must be provided " +
                         "for scalar frequency and phase_mod parameters")
+        else:
+            if frequency.shape[-1] > 1 or phase_mod.shape[-1] > 1:
+                raise LengthMismatchError("Can't use length parameter when " +
+                        "a time dimension is provided for frequency or " +
+                        "phase.")
 
         if frequency.shape[-1] == 1:
             frequency =\
