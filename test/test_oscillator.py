@@ -147,7 +147,7 @@ def test_throws_if_length_given_when_frequency_time_axis_used(
             sample_rate=dummy_sample_rate)
 
 
-def test_throws_if_length_given_when_frequency_time_axis_used(
+def test_throws_if_length_given_when_phase_time_axis_used(
         mock_dummy_osc):
     dummy_freq = torch.Tensor([0])
     dummy_phase_mod = torch.Tensor([1, 2, 3])
