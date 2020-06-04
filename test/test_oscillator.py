@@ -111,6 +111,62 @@ def test_computes_phase_from_phase_mod_with_time_axis(mock_dummy_osc):
             -100 + 3 * math.pi / 2]))
 
 
+def test_computes_phase_from_scalar_inputs_across_multiple_batches(
+        mock_dummy_osc):
+    check_computes_correct_phase(
+        mock_dummy_osc,
+        torch.Tensor([[1], [2]]),
+        torch.Tensor([[100], [-50]]),
+        4,
+        4,
+        torch.Tensor([
+            [100 + 0, 100 + math.pi / 2, 100 + math.pi, 100 + 3 * math.pi / 2],
+            [-50 + 0, -50 + math.pi, -50 + 2 * math.pi, -50 + 3 * math.pi]])
+    )
+
+
+def test_computes_phase_from_time_axis_inputs_across_multiple_batches(
+        mock_dummy_osc):
+    check_computes_correct_phase(
+        mock_dummy_osc,
+        torch.Tensor([[0, 1, 2, 0], [2, 1, 0, 0]]),
+        torch.Tensor([[10, -10, 5, -5], [1, 2, 3, 4]]),
+        None,
+        4,
+        torch.Tensor([
+            [10 + 0, -10 + 0, 5 + math.pi / 2, -5 + 3 * math.pi / 2],
+            [1 + 0, 2 + math.pi, 3 + 3 * math.pi / 2, 4 + 3 * math.pi / 2]])
+    )
+
+
+def test_computes_phase_from_scalar_freq_and_time_axis_phase_mod_with_batches(
+        mock_dummy_osc):
+    check_computes_correct_phase(
+        mock_dummy_osc,
+        torch.Tensor([[0, 1, 2, 0], [2, 1, 0, 0]]),
+        torch.Tensor([[10], [10]]),
+        None,
+        4,
+        torch.Tensor([
+            [10 + 0, 10 + 0, 10 + math.pi / 2, 10 + 3 * math.pi / 2],
+            [10 + 0, 10 + math.pi, 10 + 3 * math.pi / 2, 10 + 3 * math.pi / 2]]
+        )
+    )
+
+def test_computes_phase_from_time_axis_freq_and_scalar_phase_mod_with_batches(
+        mock_dummy_osc):
+    check_computes_correct_phase(
+        mock_dummy_osc,
+        torch.Tensor([[1], [2]]),
+        torch.Tensor([[10, -10, 5, -5], [1, 2, 3, 4]]),
+        None,
+        4,
+        torch.Tensor([
+            [10 + 0, -10 + math.pi / 2, 5 + math.pi, -5 + 3 * math.pi / 2],
+            [1 + 0, 2 + math.pi, 3 + 2 * math.pi, 4 + 3 * math.pi]])
+    )
+
+
 def check_for_length_mismatch_error(
         mock_dummy_osc,
         dummy_freq,
