@@ -1,7 +1,7 @@
 import math
 
 import pytest
-from pytest_mock import mocker
+from pytest_mock import mocker  # noqa
 import torch
 
 from gradrack.oscillators import Oscillator, LengthMismatchError
@@ -18,8 +18,9 @@ def dummy_osc():
             pass
     return DummyOsc()  # noqa: F841
 
+
 @pytest.fixture
-def mock_dummy_osc(dummy_osc, mocker):
+def mock_dummy_osc(dummy_osc, mocker):  # noqa
     mocker.patch.object(dummy_osc, 'generate')
     return dummy_osc
 
@@ -64,6 +65,7 @@ def check_computes_correct_phase(
 
     args = mock_dummy_osc.generate.call_args[0]
     torch.testing.assert_allclose(args[0], expected_phase)
+
 
 def test_converts_scalar_frequency_to_phase(mock_dummy_osc):
     check_computes_correct_phase(
@@ -152,6 +154,7 @@ def test_computes_phase_from_scalar_freq_and_time_axis_phase_mod_with_batches(
             [10 + 0, 10 + math.pi, 10 + 3 * math.pi / 2, 10 + 3 * math.pi / 2]]
         )
     )
+
 
 def test_computes_phase_from_time_axis_freq_and_scalar_phase_mod_with_batches(
         mock_dummy_osc):
