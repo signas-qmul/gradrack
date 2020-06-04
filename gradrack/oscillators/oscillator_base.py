@@ -9,12 +9,21 @@ class Oscillator(torch.nn.Module, ABC):
     def __init__(self):
         super().__init__()
 
-    def forward(self, frequency, phase_mod, length=None, sample_rate=None):
+    def forward(self, frequency, phase_mod=None, length=None, sample_rate=None):
+        phase_mod = self.replace_empty_phase_mod(phase_mod, frequency)
+        sample_rate = self.replace_empty_sample_rate(sample_rate)
+
         self.check_input_shape(frequency, phase_mod, length)
         frequency = self.broadcast_dimensions(frequency, phase_mod, length)
+
         phase = self.compute_phase(frequency, phase_mod, sample_rate)
 
-        self.generate(phase)
+        return self.generate(phase)
+
+    def replace_empty_phase_mod(self, phase_mod, frequency):
+        if phase_mod is None:
+            phase_mod = torch.zeros_like(frequency)
+        return phase_mod
 
     def check_input_shape(self, frequency, phase_mod, length):
         if length is None:
@@ -26,6 +35,9 @@ class Oscillator(torch.nn.Module, ABC):
             raise LengthMismatchError("Can't use length parameter when " +
                                       "a time dimension is provided for " +
                                       "frequency or phase.")
+
+    def replace_empty_sample_rate(self, sample_rate):
+        return sample_rate or math.tau
 
     def broadcast_dimensions(self, frequency, phase_mod, length):
         if length is None and phase_mod.shape[-1] > 1:
@@ -46,7 +58,6 @@ class Oscillator(torch.nn.Module, ABC):
         phase = math.tau * phase / sample_rate
         phase = phase + phase_mod
         return phase
-
 
     @abstractmethod
     def generate(self, phase):

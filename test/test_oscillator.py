@@ -15,7 +15,7 @@ def dummy_osc():
             super().__init__()
 
         def generate(self, phase):
-            pass
+            return phase
     return DummyOsc()  # noqa: F841
 
 
@@ -170,6 +170,36 @@ def test_computes_phase_from_time_axis_freq_and_scalar_phase_mod_with_batches(
     )
 
 
+def test_computes_angular_frequency_when_no_sample_rate_passed(mock_dummy_osc):
+    check_computes_correct_phase(
+        mock_dummy_osc,
+        torch.Tensor([[math.pi]]),
+        torch.Tensor([[0]]),
+        4,
+        None,
+        torch.Tensor([[0, math.pi, 2 * math.pi, 3 * math.pi]]))
+
+
+def test_phase_mod_is_optional(mock_dummy_osc):
+    check_computes_correct_phase(
+        mock_dummy_osc,
+        torch.Tensor([0]),
+        None,
+        1,
+        4,
+        torch.Tensor([0]))
+
+
+def test_returns_generated_values(dummy_osc):
+    dummy_freq = torch.Tensor([0])
+    dummy_length = 2
+    expected_output = torch.Tensor([0, 0])
+
+    actual_output = dummy_osc(dummy_freq, length=dummy_length)
+
+    torch.testing.assert_allclose(actual_output, expected_output)
+
+
 def check_for_length_mismatch_error(
         mock_dummy_osc,
         dummy_freq,
@@ -194,8 +224,7 @@ def test_throws_if_no_length_given_when_frequency_and_phase_mod_are_scalar(
         4)
 
 
-def test_throws_if_length_given_when_frequency_time_axis_used(
-        mock_dummy_osc):
+def test_throws_if_length_given_when_frequency_time_axis_used(mock_dummy_osc):
     check_for_length_mismatch_error(
         mock_dummy_osc,
         torch.Tensor([1, 2, 3]),
@@ -204,8 +233,7 @@ def test_throws_if_length_given_when_frequency_time_axis_used(
         4)
 
 
-def test_throws_if_length_given_when_phase_time_axis_used(
-        mock_dummy_osc):
+def test_throws_if_length_given_when_phase_time_axis_used(mock_dummy_osc):
     check_for_length_mismatch_error(
         mock_dummy_osc,
         torch.Tensor([0]),
