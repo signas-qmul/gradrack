@@ -190,6 +190,7 @@ def test_throws_if_no_length_given_when_frequency_and_phase_mod_are_scalar(
         None,
         4)
 
+
 def test_throws_if_length_given_when_frequency_time_axis_used(
         mock_dummy_osc):
     check_for_length_mismatch_error(
