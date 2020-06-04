@@ -14,14 +14,14 @@ def dummy_osc():
         def __init__(self):
             super().__init__()
 
-        def generate(self, phase):
+        def _generate(self, phase):
             return phase
     return DummyOsc()  # noqa: F841
 
 
 @pytest.fixture
 def mock_dummy_osc(dummy_osc, mocker):  # noqa
-    mocker.patch.object(dummy_osc, 'generate')
+    mocker.patch.object(dummy_osc, '_generate')
     return dummy_osc
 
 
@@ -47,7 +47,7 @@ def test_forward_calls_subclass_generate_method(mock_dummy_osc):
         dummy_length,
         dummy_sample_rate)
 
-    mock_dummy_osc.generate.assert_called_once_with(torch.Tensor([0]))
+    mock_dummy_osc._generate.assert_called_once_with(torch.Tensor([0]))
 
 
 def check_computes_correct_phase(
@@ -63,7 +63,7 @@ def check_computes_correct_phase(
         dummy_length,
         dummy_sample_rate)
 
-    args = mock_dummy_osc.generate.call_args[0]
+    args = mock_dummy_osc._generate.call_args[0]
     torch.testing.assert_allclose(args[0], expected_phase)
 
 
