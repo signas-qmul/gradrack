@@ -25,13 +25,15 @@ class Oscillator(torch.nn.Module, ABC):
             frequency,
             phase_mod=None,
             length=None,
-            sample_rate=None):
+            sample_rate=None,
+            **_generate_kwargs):
         """Generate a signal given a set of parameters.
 
         Uses the frequency, phase_mod, length, and sample_rate parameters to
         determine the best output shape, and then generate a signal by calling
         the subclass generate() method. Parameters frequency and phase_mod can
         either be scalar values, or can have time axes and batch dimensions.
+        Any extra keyword arguments are passed directly to _generate.
 
         Args:
             frequency (torch.Tensor): The sample-wise instantaneous frequency
@@ -62,7 +64,7 @@ class Oscillator(torch.nn.Module, ABC):
 
         phase = self._compute_phase(frequency, phase_mod, sample_rate)
 
-        return self._generate(phase)
+        return self._generate(phase, **_generate_kwargs)
 
     def _replace_empty_phase_mod(self, phase_mod, frequency):
         # If no phase mod is provided, create a zero phase tensor.
@@ -110,7 +112,7 @@ class Oscillator(torch.nn.Module, ABC):
         return phase
 
     @abstractmethod
-    def _generate(self, phase):
+    def _generate(self, phase, **kwargs):
         # This should be overridden to create an oscillator
         pass
 

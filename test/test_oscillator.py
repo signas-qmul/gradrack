@@ -50,6 +50,21 @@ def test_forward_calls_subclass_generate_method(mock_dummy_osc):
     mock_dummy_osc._generate.assert_called_once_with(torch.Tensor([0]))
 
 
+def test_passes_kwargs_to_generate_method(mock_dummy_osc):
+    dummy_freq = torch.Tensor([0])
+    dummy_length = 1
+    dummy_kwargs = {
+        'foo': 'bar'
+    }
+
+    mock_dummy_osc(dummy_freq, length=dummy_length, **dummy_kwargs)
+
+    mock_dummy_osc._generate.assert_called_once_with(
+        torch.Tensor([0]),
+        foo='bar'
+    )
+
+
 def check_computes_correct_phase(
         mock_dummy_osc,
         dummy_freq,
