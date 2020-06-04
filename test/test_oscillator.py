@@ -49,14 +49,13 @@ def test_forward_calls_subclass_generate_method(mock_dummy_osc):
     mock_dummy_osc.generate.assert_called_once_with(torch.Tensor([0]))
 
 
-def test_converts_scalar_frequency_to_phase(mock_dummy_osc):
-    dummy_freq = torch.Tensor([1])
-    dummy_phase_mod = torch.Tensor([0])
-    dummy_length = 4
-    dummy_sample_rate = 4
-
-    expected_phase = torch.tensor([0, math.pi / 2, math.pi, 3 * math.pi / 2])
-
+def check_computes_correct_phase(
+        mock_dummy_osc,
+        dummy_freq,
+        dummy_phase_mod,
+        dummy_length,
+        dummy_sample_rate,
+        expected_phase):
     mock_dummy_osc(
         dummy_freq,
         dummy_phase_mod,
@@ -65,98 +64,91 @@ def test_converts_scalar_frequency_to_phase(mock_dummy_osc):
 
     args = mock_dummy_osc.generate.call_args[0]
     torch.testing.assert_allclose(args[0], expected_phase)
+
+def test_converts_scalar_frequency_to_phase(mock_dummy_osc):
+    check_computes_correct_phase(
+        mock_dummy_osc,
+        torch.Tensor([1]),
+        torch.Tensor([0]),
+        4,
+        4,
+        torch.tensor([0, math.pi / 2, math.pi, 3 * math.pi / 2]))
 
 
 def test_offsets_computed_phase_by_scalar_phase_mod(mock_dummy_osc):
-    dummy_freq = torch.Tensor([2])
-    dummy_phase_mod = torch.tensor([500])
-    dummy_length = 4
-    dummy_sample_rate = 4
-
-    expected_phase = torch.Tensor(
-        [500, math.pi + 500, 2 * math.pi + 500, 3 * math.pi + 500])
-    
-    mock_dummy_osc(
-        dummy_freq,
-        dummy_phase_mod,
-        dummy_length,
-        dummy_sample_rate)
-    
-    args = mock_dummy_osc.generate.call_args[0]
-    torch.testing.assert_allclose(args[0], expected_phase)
+    check_computes_correct_phase(
+        mock_dummy_osc,
+        torch.Tensor([2]),
+        torch.tensor([500]),
+        4,
+        4,
+        torch.Tensor(
+            [500, math.pi + 500, 2 * math.pi + 500, 3 * math.pi + 500]))
 
 
 def test_computes_phase_from_frequency_with_time_axis(mock_dummy_osc):
-    dummy_freq = torch.Tensor([0, 1, 2, 0])
-    dummy_phase_mod = torch.Tensor([20])
-    dummy_sample_rate = 4
-
-    expected_phase = torch.Tensor(
-        [20, 20, math.pi / 2 + 20, 3 * math.pi / 2 + 20])
-
-    mock_dummy_osc(
-        dummy_freq,
-        dummy_phase_mod,
-        sample_rate=dummy_sample_rate)
-    
-    args = mock_dummy_osc.generate.call_args[0]
-    torch.testing.assert_allclose(args[0], expected_phase)
+    check_computes_correct_phase(
+        mock_dummy_osc,
+        torch.Tensor([0, 1, 2, 0]),
+        torch.Tensor([20]),
+        None,
+        4,
+        torch.Tensor(
+            [20, 20, math.pi / 2 + 20, 3 * math.pi / 2 + 20]))
 
 
 def test_computes_phase_from_phase_mod_with_time_axis(mock_dummy_osc):
-    dummy_freq = torch.Tensor([1])
-    dummy_phase_mod = torch.Tensor([100, -100, 100, -100])
-    dummy_sample_rate = 4
+    check_computes_correct_phase(
+        mock_dummy_osc,
+        torch.Tensor([1]),
+        torch.Tensor([100, -100, 100, -100]),
+        None,
+        4,
+        torch.Tensor([
+            100 + 0,
+            -100 + math.pi / 2,
+            100 + math.pi,
+            -100 + 3 * math.pi / 2]))
 
-    expected_phase = torch.Tensor(
-        [100 + 0, -100 + math.pi / 2, 100 + math.pi, -100 + 3 * math.pi / 2])
-    
-    mock_dummy_osc(
+
+def check_for_length_mismatch_error(
+        mock_dummy_osc,
         dummy_freq,
         dummy_phase_mod,
-        sample_rate=dummy_sample_rate)
-    
-    args = mock_dummy_osc.generate.call_args[0]
-    torch.testing.assert_allclose(args[0], expected_phase)
+        dummy_length,
+        dummy_sample_rate):
+    with pytest.raises(LengthMismatchError):
+        mock_dummy_osc(
+            dummy_freq,
+            dummy_phase_mod,
+            length=dummy_length,
+            sample_rate=dummy_sample_rate)
 
 
 def test_throws_if_no_length_given_when_frequency_and_phase_mod_are_scalar(
         mock_dummy_osc):
-    dummy_freq = torch.Tensor([1])
-    dummy_phase_mod = torch.Tensor([0])
-    dummy_sample_rate = 4
-
-    with pytest.raises(LengthMismatchError):
-        mock_dummy_osc(
-            dummy_freq,
-            dummy_phase_mod,
-            sample_rate=dummy_sample_rate)
+    check_for_length_mismatch_error(
+        mock_dummy_osc,
+        torch.Tensor([1]),
+        torch.Tensor([0]),
+        None,
+        4)
 
 def test_throws_if_length_given_when_frequency_time_axis_used(
         mock_dummy_osc):
-    dummy_freq = torch.Tensor([1, 2, 3])
-    dummy_phase_mod = torch.Tensor([0])
-    dummy_length = 4
-    dummy_sample_rate = 4
-
-    with pytest.raises(LengthMismatchError):
-        mock_dummy_osc(
-            dummy_freq,
-            dummy_phase_mod,
-            length=dummy_length,
-            sample_rate=dummy_sample_rate)
+    check_for_length_mismatch_error(
+        mock_dummy_osc,
+        torch.Tensor([1, 2, 3]),
+        torch.Tensor([0]),
+        4,
+        4)
 
 
 def test_throws_if_length_given_when_phase_time_axis_used(
         mock_dummy_osc):
-    dummy_freq = torch.Tensor([0])
-    dummy_phase_mod = torch.Tensor([1, 2, 3])
-    dummy_length = 4
-    dummy_sample_rate = 4
-
-    with pytest.raises(LengthMismatchError):
-        mock_dummy_osc(
-            dummy_freq,
-            dummy_phase_mod,
-            length=dummy_length,
-            sample_rate=dummy_sample_rate)
+    check_for_length_mismatch_error(
+        mock_dummy_osc,
+        torch.Tensor([0]),
+        torch.Tensor([1, 2, 3]),
+        4,
+        4)
