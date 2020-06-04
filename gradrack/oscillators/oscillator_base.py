@@ -10,18 +10,26 @@ class Oscillator(torch.nn.Module, ABC):
         super().__init__()
 
     def forward(self, frequency, phase_mod, length=None, sample_rate=None):
+        self.check_input_shape(frequency, phase_mod, length)
+        frequency = self.broadcast_dimensions(frequency, phase_mod, length)
+        phase = self.compute_phase(frequency, phase_mod, sample_rate)
+
+        self.generate(phase)
+
+    def check_input_shape(self, frequency, phase_mod, length):
         if length is None:
-            if phase_mod.shape[-1] > 1:
-                length = phase_mod.shape[-1]
-            elif frequency.shape[-1] == 1 and phase_mod.shape[-1] == 1:
+            if frequency.shape[-1] == 1 and phase_mod.shape[-1] == 1:
                 raise LengthMismatchError("Sample length must be provided " +
                                           "for scalar frequency and " +
                                           "phase_mod parameters")
-        else:
-            if frequency.shape[-1] > 1 or phase_mod.shape[-1] > 1:
-                raise LengthMismatchError("Can't use length parameter when " +
-                                          "a time dimension is provided for " +
-                                          "frequency or phase.")
+        elif frequency.shape[-1] > 1 or phase_mod.shape[-1] > 1:
+            raise LengthMismatchError("Can't use length parameter when " +
+                                      "a time dimension is provided for " +
+                                      "frequency or phase.")
+
+    def broadcast_dimensions(self, frequency, phase_mod, length):
+        if length is None and phase_mod.shape[-1] > 1:
+            length = phase_mod.shape[-1]
 
         if frequency.shape[-1] == 1:
             frequency =\
@@ -31,12 +39,14 @@ class Oscillator(torch.nn.Module, ABC):
         frequency = F.pad(frequency, (1, 0), 'constant', 0)
         frequency = frequency.narrow(-1, 0, original_frequency_length)
 
+        return frequency
+
+    def compute_phase(self, frequency, phase_mod, sample_rate):
         phase = frequency.cumsum(-1)
         phase = math.tau * phase / sample_rate
-
         phase = phase + phase_mod
+        return phase
 
-        self.generate(phase)
 
     @abstractmethod
     def generate(self, phase):
