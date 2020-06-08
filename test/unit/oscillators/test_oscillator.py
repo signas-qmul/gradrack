@@ -185,6 +185,17 @@ def test_computes_phase_from_time_axis_freq_and_scalar_phase_mod_with_batches(
     )
 
 
+def test_zero_length_output_when_length_scalar_is_zero(mock_dummy_osc):
+    check_computes_correct_phase(
+        mock_dummy_osc,
+        torch.Tensor([0]),
+        None,
+        0,
+        None,
+        torch.Tensor([])
+    )
+
+
 def test_computes_angular_frequency_when_no_sample_rate_passed(mock_dummy_osc):
     check_computes_correct_phase(
         mock_dummy_osc,
@@ -203,6 +214,16 @@ def test_phase_mod_is_optional(mock_dummy_osc):
         1,
         4,
         torch.Tensor([0]))
+
+
+def test_phase_mod_is_optional_with_batch_dimension(mock_dummy_osc):
+    check_computes_correct_phase(
+        mock_dummy_osc,
+        torch.Tensor([[0], [0]]),
+        None,
+        1,
+        4,
+        torch.Tensor([[0], [0]]))
 
 
 def test_returns_generated_values(dummy_osc):
@@ -253,5 +274,15 @@ def test_throws_if_length_given_when_phase_time_axis_used(mock_dummy_osc):
         mock_dummy_osc,
         torch.Tensor([0]),
         torch.Tensor([1, 2, 3]),
+        4,
+        4)
+
+
+def test_throws_if_length_given_when_freq_time_axis_used_and_phase_unspecified(
+        mock_dummy_osc):
+    check_for_length_mismatch_error(
+        mock_dummy_osc,
+        torch.Tensor([1, 2, 3]),
+        None,
         4,
         4)
