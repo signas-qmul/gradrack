@@ -205,6 +205,16 @@ def test_phase_mod_is_optional(mock_dummy_osc):
         torch.Tensor([0]))
 
 
+def test_phase_mod_is_optional_with_batch_dimension(mock_dummy_osc):
+    check_computes_correct_phase(
+        mock_dummy_osc,
+        torch.Tensor([[0], [0]]),
+        None,
+        1,
+        4,
+        torch.Tensor([[0], [0]]))
+
+
 def test_returns_generated_values(dummy_osc):
     dummy_freq = torch.Tensor([0])
     dummy_length = 2
