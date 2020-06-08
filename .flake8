@@ -4,4 +4,5 @@ exclude =
     __pycache__,
     venv
 per_file_ignores =
-    test/test_oscillator.py: F811,F401
+    test/*.py: F811,F401
+    **/__init__.py: F401,F403
