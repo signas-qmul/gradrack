@@ -2,25 +2,20 @@ import math
 
 import pytest
 from pytest_mock import mocker
+
 import torch
 
 from gradrack.oscillators import Oscillator, Sinusoid
 
 
-@pytest.fixture
-def sine_osc():
-    return Sinusoid()
-
 class TestSinusoid:
 
     @pytest.fixture(autouse=True)
-    def TestSinusoid(self, sine_osc):
-        self.sine_osc = sine_osc
-
+    def set_sine_osc(self):
+        self.sine_osc = Sinusoid()
 
     def test_can_instantiate_and_is_oscillator_subclass(self):
         assert isinstance(self.sine_osc, Oscillator)
-   
 
     def check_computes_correct_signal(
             self,
@@ -35,8 +30,7 @@ class TestSinusoid:
             length=dummy_length,
             sample_rate=dummy_sr)
         torch.testing.assert_allclose(actual_output, expected_output)
-    
-    
+
     def test_outputs_zero_at_phase_zero(self):
         self.check_computes_correct_signal(
             torch.Tensor([0]),
@@ -44,8 +38,7 @@ class TestSinusoid:
             1,
             None,
             torch.Tensor([0]))
-    
-    
+
     def test_outputs_sine_wave_at_fixed_frequency(self):
         self.check_computes_correct_signal(
             torch.Tensor([1]),
@@ -53,8 +46,7 @@ class TestSinusoid:
             4,
             8,
             torch.Tensor([0, 1 / math.sqrt(2), 1, 1 / math.sqrt(2)]))
-    
-    
+
     def test_outputs_sine_wave_at_varying_frequency(self):
         self.check_computes_correct_signal(
             torch.Tensor([0, 1, 2, 1]),
@@ -62,8 +54,7 @@ class TestSinusoid:
             None,
             4,
             torch.Tensor([0, 0, 1, -1]))
-    
-    
+
     def test_outputs_sine_wave_with_fixed_phase_mod(self):
         self.check_computes_correct_signal(
             torch.Tensor([1]),
