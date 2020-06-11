@@ -64,6 +64,62 @@ class TestADSREnvelope:
             torch.Tensor([0, 0.25, 0.5, 0.75, 1, 1 / math.e])
         )
 
+    def test_generates_multi_sample_decay_with_non_zero_sustain(self):
+        dummy_decay = 4
+        dummy_sustain = 0.5
+        dummy_time_constant = 1 / math.e ** (1 / dummy_decay)
+        self.check_correctly_generates_envelope(
+            torch.Tensor([1, 1, 1, 1, 1, 1, 1, 1]),
+            torch.Tensor([2]),
+            torch.Tensor([dummy_decay]),
+            torch.Tensor([dummy_sustain]),
+            torch.Tensor([1]),
+            None,
+            torch.Tensor([
+                0,
+                0.5,
+                1,
+                dummy_sustain + (1 - dummy_sustain) * dummy_time_constant ** 1,
+                dummy_sustain + (1 - dummy_sustain) * dummy_time_constant ** 2,
+                dummy_sustain + (1 - dummy_sustain) * dummy_time_constant ** 3,
+                dummy_sustain + (1 - dummy_sustain) * dummy_time_constant ** 4,
+                dummy_sustain + (1 - dummy_sustain) * dummy_time_constant ** 5
+            ])
+        )
+
+    def test_generates_single_sample_release_from_full_sustain(self):
+        self.check_correctly_generates_envelope(
+            torch.Tensor([1, 1, 0, 0]),
+            torch.Tensor([1]),
+            torch.Tensor([1]),
+            torch.Tensor([1]),
+            torch.Tensor([1]),
+            None,
+            torch.Tensor([0, 1, 1, 1 / math.e])
+        )
+
+    def test_generates_multi_sample_release_from_mid_decay_portion(self):
+        dummy_release = 4
+        dummy_time_constant = 1 / math.e ** (1 / dummy_release)
+        self.check_correctly_generates_envelope(
+            torch.Tensor([1, 1, 1, 1, 0, 0, 0, 0]),
+            torch.Tensor([2]),
+            torch.Tensor([2]),
+            torch.Tensor([0]),
+            torch.Tensor([dummy_release]),
+            None,
+            torch.Tensor([
+                0,
+                0.5,
+                1,
+                1 / math.e ** 0.5,
+                (1 / math.e) * dummy_time_constant ** 0,
+                (1 / math.e) * dummy_time_constant ** 1,
+                (1 / math.e) * dummy_time_constant ** 2,
+                (1 / math.e) * dummy_time_constant ** 3
+            ])
+        )
+
     def check_throws_value_error(
             self,
             dummy_gate,
@@ -99,10 +155,10 @@ class TestADSREnvelope:
             torch.Tensor([0]),
             None)
 
-    def test_throws_when_attack_is_negative(self):
+    def test_throws_when_attack_is_zero(self):
         self.check_throws_value_error(
             torch.Tensor([1, 1, 1, 1, 1, 1]),
-            torch.Tensor([-1]),
+            torch.Tensor([0]),
             torch.Tensor([1]),
             torch.Tensor([0]),
             torch.Tensor([1]),
