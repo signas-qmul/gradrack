@@ -97,7 +97,6 @@ class TestADSREnvelope:
             torch.Tensor([1, 1, 1 / math.e])
         )
 
-    @pytest.mark.skip
     def test_generates_multi_sample_release_from_mid_decay_portion(self):
         dummy_release = 4
         dummy_time_constant = 1 / math.e ** (1 / dummy_release)
@@ -109,14 +108,14 @@ class TestADSREnvelope:
             torch.Tensor([dummy_release]),
             None,
             torch.Tensor([
-                0,
                 0.5,
                 1,
                 1 / math.e ** 0.5,
-                (1 / math.e) * dummy_time_constant ** 0,
+                1 / math.e ** 1,
                 (1 / math.e) * dummy_time_constant ** 1,
                 (1 / math.e) * dummy_time_constant ** 2,
-                (1 / math.e) * dummy_time_constant ** 3
+                (1 / math.e) * dummy_time_constant ** 3,
+                (1 / math.e) * dummy_time_constant ** 4
             ])
         )
 

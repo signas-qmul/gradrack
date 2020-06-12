@@ -30,9 +30,6 @@ class ADSR(torch.nn.Module):
         release_start = decay_slope * release_mask.roll(-1, -1) * decay_mask
         release_start = release_start.roll(1, -1)
         release_start = release_start.cumsum(-1)
-        release_start = (sustain
-                         + decay_time_constant
-                         * (release_start - sustain))
         release_slope = release_start * release_time_constant ** (release_axis)
 
         # mask slopes
