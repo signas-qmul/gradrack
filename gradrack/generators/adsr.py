@@ -13,8 +13,8 @@ class ADSR(torch.nn.Module):
         release_axis = self._compute_time_axes(1 - gate)
 
         # compute envelope segment masks
-        attack_mask = (attack_decay_axis < attack) * gate
-        decay_mask = (attack_decay_axis >= attack) * gate
+        attack_mask = (attack_decay_axis <= attack) * gate
+        decay_mask = (attack_decay_axis > attack) * gate
         release_mask = 1 - gate
 
         # compute exponential time constants
@@ -58,8 +58,5 @@ class ADSR(torch.nn.Module):
         pre_axis_gate = gate.clone()
         pre_axis_gate[gate == 0] = -gate_lo_diff
         time_axis = pre_axis_gate.cumsum(dim=-1)
-
-        time_axis = time_axis - 1
-        time_axis[time_axis == -1] = 0
 
         return time_axis
