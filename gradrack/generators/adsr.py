@@ -32,9 +32,11 @@ class ADSR(torch.nn.Module):
         release_slope = release_start * release_time_constant ** (release_axis)
 
         attack_start = release_slope * attack_mask.roll(-1, -1) * release_mask
-        attack_start = attack_start.roll(1, -1) 
+        attack_start = F.pad(attack_start, (0, 1))
+        attack_start = attack_start.roll(1, -1)
+        attack_start = attack_start.narrow(-1, 0, attack_start.shape[-1] - 1)
         attack_start = attack_start.cumsum(-1)
-        attack_slope = ((1 - attack_start) * attack_decay_axis / attack 
+        attack_slope = ((1 - attack_start) * attack_decay_axis / attack
                         + attack_start)
 
         # mask slopes
