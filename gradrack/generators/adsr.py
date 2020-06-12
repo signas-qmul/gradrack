@@ -22,15 +22,16 @@ class ADSR(torch.nn.Module):
         release_time_constant = 1 / (math.e ** (1 / release))
 
         # calculate slope functions
-
         decay_slope = decay_time_constant ** (attack_decay_axis - attack)
         decay_slope = sustain + (1 - sustain) * decay_slope
 
         release_start = decay_slope * release_mask.roll(-1, -1) * decay_mask
-        release_start = F.pad(release_start[1:], (1, 0))
+        release_start = self._shift_tensor_along_dim(release_start, -1)
+        print(release_start)
         release_start = release_start.cumsum(-1)
+        print(release_start)
         release_slope = release_start * release_time_constant ** (release_axis)
-        
+
         attack_start = release_slope * attack_mask.roll(-1, -1) * release_mask
         attack_start = F.pad(attack_start, (0, 1))
         attack_start = attack_start.roll(1, -1)
@@ -64,3 +65,11 @@ class ADSR(torch.nn.Module):
         time_axis = pre_axis_gate.cumsum(dim=-1)
 
         return time_axis
+
+    def _shift_tensor_along_dim(self, tensor, dim, shift_amount=1):
+        x = tensor.transpose(0, dim)
+        x = x[shift_amount:]
+        x = F.pad(x, (shift_amount, 0))
+        x = x.transpose(dim, 0)
+
+        return x
