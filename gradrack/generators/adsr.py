@@ -22,7 +22,6 @@ class ADSR(torch.nn.Module):
         release_time_constant = 1 / (math.e ** (1 / release))
 
         # calculate slope functions
-        attack_slope = attack_decay_axis / attack
 
         decay_slope = decay_time_constant ** (attack_decay_axis - attack)
         decay_slope = sustain + (1 - sustain) * decay_slope
@@ -31,6 +30,12 @@ class ADSR(torch.nn.Module):
         release_start = release_start.roll(1, -1)
         release_start = release_start.cumsum(-1)
         release_slope = release_start * release_time_constant ** (release_axis)
+
+        attack_start = release_slope * attack_mask.roll(-1, -1) * release_mask
+        attack_start = attack_start.roll(1, -1) 
+        attack_start = attack_start.cumsum(-1)
+        attack_slope = ((1 - attack_start) * attack_decay_axis / attack 
+                        + attack_start)
 
         # mask slopes
         attack_section = attack_slope * attack_mask

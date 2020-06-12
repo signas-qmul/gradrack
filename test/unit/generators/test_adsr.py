@@ -121,7 +121,7 @@ class TestADSREnvelope:
 
     def test_generates_multiple_envelopes_from_retriggering_gate(self):
         self.check_correctly_generates_envelope(
-            torch.Tensor([0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0]),
+            torch.Tensor([0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1]),
             torch.Tensor([2]),
             torch.Tensor([2]),
             torch.Tensor([0]),
@@ -138,9 +138,7 @@ class TestADSREnvelope:
                 0.1353352832 + (1 - 0.1353352832) / 2,
                 1.0,
                 (1 / math.e ** 0.5) ** 1,
-                (1 / math.e ** 0.5) ** 2,
-                (1 / math.e) * (1 / math.e ** 0.5) ** 1,
-                (1 / math.e) * (1 / math.e ** 0.5) ** 2
+                (1 / math.e ** 0.5) ** 2
             ])
         )
 
