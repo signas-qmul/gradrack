@@ -1,7 +1,6 @@
 import math
 
 import pytest
-from pytest_mock import mocker
 import torch
 
 from gradrack.generators import ADSR
