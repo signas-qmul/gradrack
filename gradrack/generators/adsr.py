@@ -6,9 +6,14 @@ import torch.nn.functional as F
 
 class ADSR(torch.nn.Module):
     def forward(self, gate, attack, decay, sustain, release, sample_rate=None):
+        if sample_rate is not None:
+            attack *= sample_rate
+            decay *= sample_rate
+            release *= sample_rate
+
         self._validate_input(attack, decay, release)
 
-        # compute time axes
+        # compute time axis
         attack_decay_axis = self._cumsum_resetting_on_value(gate)
 
         # compute envelope segment masks
@@ -21,11 +26,13 @@ class ADSR(torch.nn.Module):
         release_time_constant = 1 / (math.e**(1 / release))
 
         # calculate slope functions
+        # (start with attack regions counting from zero)
         attack_slope = attack_decay_axis / attack
 
         decay_slope = decay_time_constant**(attack_decay_axis - attack)
         decay_slope = sustain + (1 - sustain) * decay_slope
 
+        # Alternately update attack and release segments:
         for _ in range(2):
             ad_slope = attack_mask * attack_slope + decay_mask * decay_slope
 
@@ -44,6 +51,7 @@ class ADSR(torch.nn.Module):
         return attack_section + decay_section + release_section
 
     def _validate_input(self, attack, decay, release):
+        """Ensure no erroneous values are input"""
         if attack == 0:
             raise ValueError('Attack length must be > 0')
         if decay == 0:
@@ -52,12 +60,16 @@ class ADSR(torch.nn.Module):
             raise ValueError('Release length must be > 0')
 
     def _cumsum_resetting_on_value(self, t, reset_value=0):
+        """A moderately hacky algorithm for performing a cumsum whose count
+        resets every time a zero is reached"""
         accumulated = t.clone()
         accumulated[t == reset_value] = 0
         accumulated = accumulated.cumsum(dim=-1)
+
         accumulated_lo = accumulated[t == reset_value]
         padded_accum_lo = F.pad(accumulated_lo, (1, 0))
         padded_accum_lo_diff = padded_accum_lo[1:] - padded_accum_lo[:-1]
+
         output = t.clone()
         output[t == reset_value] = -padded_accum_lo_diff
         output = output.cumsum(dim=-1)
@@ -65,7 +77,18 @@ class ADSR(torch.nn.Module):
 
         return output
 
-    def _shift_tensor_along_dim(self, tensor, dim, shift_amount=1):
+    def _cumprod_resetting_on_zero(self, t):
+        """Independently calculates the cumulative product of each region of
+        the tensor separated by zeros. Calculated across the last dim."""
+        log_t = torch.log(t)
+        cum_log_t = self._cumsum_resetting_on_value(log_t, float('-Inf'))
+        return torch.exp(cum_log_t)
+
+    def _shift_tensor_along_dim_with_zero_padding(self,
+                                                  tensor,
+                                                  dim,
+                                                  shift_amount=1):
+        """Shift a tensor along a dimension and zero pad the remainder."""
         x = tensor.transpose(0, dim)
         x = F.pad(x, (shift_amount, 0))
         x = x[:-shift_amount]
@@ -73,56 +96,52 @@ class ADSR(torch.nn.Module):
 
         return x
 
-    def _calculate_release_slope(self, release_time_constant, ad_slope,
-                                 gate, decay_mask, release_mask):
-        # find final value of each preceding decay section
-        release_initial = ad_slope * release_mask.roll(-1, -1) * decay_mask
+    def _find_starting_values(self, previous_slope, previous_mask, this_mask):
+        """Find the starting values of all regions covered by a particular
+        mask by overlapping it with the preceding section's mask."""
+        starting_values = (previous_slope * this_mask.roll(-1, -1) *
+                           previous_mask)
+        starting_values = self._shift_tensor_along_dim_with_zero_padding(
+            starting_values, -1)
+        return starting_values
 
-        # move that final value into the first position of the decay slope
-        release_initial = self._shift_tensor_along_dim(release_initial, -1)
+    def _calculate_release_slope(self, release_time_constant, ad_slope, gate,
+                                 ad_mask, release_mask):
+        """Compute the release slopes for all areas covered by the release
+        mask, taking the ending value of each previous attack/decay slope as
+        the starting value."""
+        release_initial = self._find_starting_values(ad_slope, ad_mask,
+                                                     release_mask)
 
-        # populate the remaining values of the decay slope with ones
+        # populate the remaining values of the release slope with ones
         release_initial[release_initial == 0] = 1
+        release_initial = release_initial * release_mask
         # remove any ones that precede the first attack
         release_initial = release_initial * (gate.cumsum(-1) > 0)
-        # apply the release mask and apply the time constant non-cumulatively
-        release_initial = (release_initial * release_mask *
-                           release_time_constant)
-        # switch to a log scale
-        log_release_start = torch.log(release_initial)
-        # replace infs with zeros to allow cumsum algorithm to work
-        log_release_start[log_release_start == float('-Inf')] = 0
-        # use cumsum with reset on zeros alogrithm to accumulate log release
-        cum_log_release_start = self._cumsum_resetting_on_value(
-            log_release_start)
-        # convert zeros back to negative infs
-        cum_log_release_start[cum_log_release_start == 0] = float('-Inf')
-        # convert back to linear domain (cumsum becomes cumprod)
-        release_slope = torch.exp(cum_log_release_start)
+        # apply the time constant non-cumulatively
+        release_initial = release_initial * release_time_constant
+
+        # calculate each independent release slope
+        release_slope = self._cumprod_resetting_on_zero(release_initial)
 
         return release_slope
 
     def _calculate_attack_slope(self, attack, attack_mask, release_mask,
                                 release_slope, attack_decay_axis):
-        # find final value of preceding release section
-        attack_start = release_slope * attack_mask.roll(-1, -1) * release_mask
-        attack_start = F.pad(attack_start, (0, 1))
+        """Compute the attack slopes for all areas covered by the attack mask,
+        taking the ending value of each previous release slope as the
+        starting value."""
+        attack_initial = self._find_starting_values(release_slope,
+                                                    release_mask, attack_mask)
+
         # invert values so we are describing range of attack
-        attack_range = 1 - attack_start
-        # move values into first attack position
-        attack_range = attack_range.roll(1, -1)
-        attack_range = attack_range.narrow(-1, 0, attack_range.shape[-1] - 1)
+        attack_range = 1 - attack_initial
         # remove anything outside of attack segments
         attack_range = attack_range * attack_mask
 
-        # take the log and cumulatively add, resetting each time we reach a
-        # -inf [i.e. log(0)]. This has the effect of 'spreading' each attack
-        # start value over its corresponding attack segment
-        log_attack_range = torch.log(attack_range)
-        cum_log_attack_range = self._cumsum_resetting_on_value(
-            log_attack_range, float('-Inf'))
-        # convert back to linear scale (additions become multiplications)
-        attack_range = torch.exp(cum_log_attack_range)
+        # "spread" each starting attack range value across all the following
+        # ones.
+        attack_range = self._cumprod_resetting_on_zero(attack_range)
 
         # use our new range axis to compute the attack slope
         attack_slope = attack_range * attack_decay_axis / attack + (

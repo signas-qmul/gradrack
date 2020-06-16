@@ -169,6 +169,61 @@ class TestADSREnvelope:
             ])
         )
 
+    def test_generates_envelope_when_release_interrupts_longer_attack(self):
+        alpha_r = 1 / math.e ** 0.125  # release time constant
+
+        attack_1_final_value = 0.2
+        release_1_final_value = attack_1_final_value * alpha_r ** 2
+        attack_2_final_value = (release_1_final_value
+                                + 8
+                                * (1 - release_1_final_value)
+                                / 10)
+        self.check_correctly_generates_envelope(
+            torch.Tensor([1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0]),
+            torch.Tensor([10]),
+            torch.Tensor([5125]),
+            torch.Tensor([0.3]),
+            torch.Tensor([8]),
+            None,
+            torch.Tensor([
+                0.1,
+                attack_1_final_value,
+                attack_1_final_value * alpha_r ** 1,
+                release_1_final_value,
+                release_1_final_value + 1 * (1 - release_1_final_value) / 10,
+                release_1_final_value + 2 * (1 - release_1_final_value) / 10,
+                release_1_final_value + 3 * (1 - release_1_final_value) / 10,
+                release_1_final_value + 4 * (1 - release_1_final_value) / 10,
+                release_1_final_value + 5 * (1 - release_1_final_value) / 10,
+                release_1_final_value + 6 * (1 - release_1_final_value) / 10,
+                release_1_final_value + 7 * (1 - release_1_final_value) / 10,
+                attack_2_final_value,
+                attack_2_final_value * alpha_r ** 1,
+                attack_2_final_value * alpha_r ** 2,
+                attack_2_final_value * alpha_r ** 3,
+                attack_2_final_value * alpha_r ** 4
+            ])
+        )
+
+    def test_converts_from_seconds_to_samples_when_sample_rate_given(self):
+        self.check_correctly_generates_envelope(
+            torch.Tensor([0, 1, 1, 1, 1, 0, 0]),
+            torch.Tensor([0.5]),
+            torch.Tensor([0.5]),
+            torch.Tensor([0.0]),
+            torch.Tensor([1]),
+            4,
+            torch.Tensor([
+                0,
+                0.5,
+                1.0,
+                (1 / math.e ** 0.5),
+                (1 / math.e ** 0.5) ** 2,
+                (1 / math.e ** 0.5) ** 2 * (1 / math.e ** 0.25),
+                (1 / math.e ** 0.5) ** 2 * (1 / math.e ** 0.25) ** 2
+            ])
+        )
+
     def check_throws_value_error(
             self,
             dummy_gate,
