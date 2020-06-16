@@ -143,6 +143,32 @@ class TestADSREnvelope:
             ])
         )
 
+    def test_generates_multiple_envelopes_when_release_interrupts_attack(self):
+        self.check_correctly_generates_envelope(
+            torch.Tensor([0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1]),
+            torch.Tensor([4]),
+            torch.Tensor([120]),
+            torch.Tensor([0.2]),
+            torch.Tensor([4]),
+            None,
+            torch.Tensor([
+                0.0,
+                0.25,
+                0.5,
+                0.5 * (1 / math.e ** 0.25) ** 1,
+                0.5 * (1 / math.e ** 0.25) ** 2,
+                0.5 * (1 / math.e ** 0.25) ** 3,
+                (1 + 1.5 * (1 / math.e ** 0.25) ** 3) / 4,
+                (2 + 1 * (1 / math.e ** 0.25) ** 3) / 4,
+                (((2 + 1 * (1 / math.e ** 0.25) ** 3) / 4)
+                    * (1 / math.e ** 0.25) ** 1),
+                (((2 + 1 * (1 / math.e ** 0.25) ** 3) / 4)
+                    * (1 / math.e ** 0.25) ** 2),
+                0.3748915291 + (1 - 0.3748915291) / 4,
+                0.3748915291 + 2 * (1 - 0.3748915291) / 4,
+            ])
+        )
+
     def check_throws_value_error(
             self,
             dummy_gate,
