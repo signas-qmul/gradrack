@@ -313,12 +313,7 @@ class TestADSREnvelope:
         release = 1
 
         self.check_throws_value_error(
-            gate,
-            attack,
-            decay,
-            sustain,
-            release,
-            None,
+            gate, attack, decay, sustain, release, None,
         )
 
     def test_throws_when_zero_release_is_given(self):
@@ -329,12 +324,7 @@ class TestADSREnvelope:
         release = 0
 
         self.check_throws_value_error(
-            gate,
-            attack,
-            decay,
-            sustain,
-            release,
-            None,
+            gate, attack, decay, sustain, release, None,
         )
 
     def test_throws_when_attack_is_zero(self):
@@ -344,12 +334,7 @@ class TestADSREnvelope:
         sustain = 0
         release = 1
         self.check_throws_value_error(
-            gate,
-            attack,
-            decay,
-            sustain,
-            release,
-            None,
+            gate, attack, decay, sustain, release, None,
         )
 
     def _compute_time_constants(self, decay, release):
