@@ -271,6 +271,74 @@ class TestADSREnvelope:
             gate, attack, decay, sustain, release, None, expected_output
         )
 
+    def test_generates_many_envelopes_across_batches_with_shared_params(self):
+        gate = torch.Tensor(
+            [
+                [0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1],
+                [0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0],
+            ]
+        )
+
+        attack = 4
+        decay = 3
+        sustain = 0.6
+        release = 7
+        alpha_d, alpha_r = self._compute_time_constants(decay, release)
+
+        a_initial_section = torch.Tensor([0])
+        a_attack_section_1 = self._generate_attack_portion(0, attack, 2)
+        a_release_section_1 = self._generate_exponential_decay(
+            a_attack_section_1[-1], alpha_r, 3
+        )
+        a_attack_section_2 = self._generate_attack_portion(
+            a_release_section_1[-1], attack, 2
+        )
+        a_release_section_2 = self._generate_exponential_decay(
+            a_attack_section_2[-1], alpha_r, 2
+        )
+        a_attack_section_3 = self._generate_attack_portion(
+            a_release_section_2[-1], attack, 2
+        )
+        a_expected_output = torch.cat(
+            (
+                a_initial_section,
+                a_attack_section_1,
+                a_release_section_1,
+                a_attack_section_2,
+                a_release_section_2,
+                a_attack_section_3,
+            )
+        )
+
+        b_initial_section = torch.Tensor([0, 0])
+        b_attack_section_1 = self._generate_attack_portion(0, attack, 4)
+        b_release_section_1 = self._generate_exponential_decay(
+            b_attack_section_1[-1], alpha_r, 2
+        )
+        b_attack_section_2 = self._generate_attack_portion(
+            b_release_section_1[-1], attack, 3
+        )
+        b_release_section_2 = self._generate_exponential_decay(
+            b_attack_section_2[-1], alpha_r, 1
+        )
+        b_expected_output = torch.cat(
+            (
+                b_initial_section,
+                b_attack_section_1,
+                b_release_section_1,
+                b_attack_section_2,
+                b_release_section_2,
+            )
+        )
+
+        expected_output = torch.stack(
+            (a_expected_output, b_expected_output), 0
+        )
+
+        self.check_correctly_generates_envelope(
+            gate, attack, decay, sustain, release, None, expected_output
+        )
+
     def test_generates_envelope_when_release_interrupts_longer_attack(self):
         gate = torch.Tensor([1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0])
 
@@ -352,7 +420,29 @@ class TestADSREnvelope:
                 dummy_sample_rate,
             )
 
-    def test_throws_when_zero_decay_is_given(self):
+    def test_throws_when_attack_is_zero(self):
+        gate = torch.Tensor([1, 1, 1, 1, 1, 1])
+        attack = 0
+        decay = 1
+        sustain = 0
+        release = 1
+
+        self.check_throws_value_error(
+            gate, attack, decay, sustain, release, None,
+        )
+
+    def test_throws_when_attack_is_negative(self):
+        gate = torch.Tensor([1, 1, 1, 1, 1, 1])
+        attack = -1
+        decay = 1
+        sustain = 0
+        release = 1
+
+        self.check_throws_value_error(
+            gate, attack, decay, sustain, release, None,
+        )
+
+    def test_throws_when_decay_is_zero(self):
         gate = torch.Tensor([1, 1, 1, 1, 1, 1])
         attack = 4
         decay = 0
@@ -363,7 +453,40 @@ class TestADSREnvelope:
             gate, attack, decay, sustain, release, None,
         )
 
-    def test_throws_when_zero_release_is_given(self):
+    def test_throws_when_decay_is_negative(self):
+        gate = torch.Tensor([1, 1, 1, 1, 1, 1])
+        attack = 4
+        decay = -2
+        sustain = 0
+        release = 1
+
+        self.check_throws_value_error(
+            gate, attack, decay, sustain, release, None,
+        )
+
+    def test_throws_when_sustain_is_greater_than_one(self):
+        gate = torch.Tensor([1, 1, 1, 1, 1, 1])
+        attack = 4
+        decay = 2
+        sustain = 2
+        release = 1
+
+        self.check_throws_value_error(
+            gate, attack, decay, sustain, release, None,
+        )
+
+    def test_throws_when_sustain_is_negative(self):
+        gate = torch.Tensor([1, 1, 1, 1, 1, 1])
+        attack = 4
+        decay = 2
+        sustain = -1
+        release = 1
+
+        self.check_throws_value_error(
+            gate, attack, decay, sustain, release, None,
+        )
+
+    def test_throws_when_release_is_zero(self):
         gate = torch.Tensor([1, 1, 1, 1, 1, 1])
         attack = 4
         decay = 1
@@ -374,12 +497,13 @@ class TestADSREnvelope:
             gate, attack, decay, sustain, release, None,
         )
 
-    def test_throws_when_attack_is_zero(self):
+    def test_throws_when_release_is_negative(self):
         gate = torch.Tensor([1, 1, 1, 1, 1, 1])
-        attack = 0
+        attack = 4
         decay = 1
         sustain = 0
-        release = 1
+        release = -502
+
         self.check_throws_value_error(
             gate, attack, decay, sustain, release, None,
         )

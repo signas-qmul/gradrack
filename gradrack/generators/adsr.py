@@ -5,7 +5,54 @@ import torch.nn.functional as F
 
 
 class ADSR(torch.nn.Module):
+    """A PyTorch module that generates differentiable ADSR envelopes.
+
+    Given a set of parameters and a gate signal, generates the output of an
+    envelope generator using only vectorised CUDA-friendly operations. Uses
+    a linear attack stage with exponential decay and release such that the
+    decay/release time specifies the time it takes the segment to fall 1 - 1/e
+    of the way to its target value.
+    """
+
+    def __init__(self):
+        """Constructs an ADSR generator
+        """
+        super().__init__()
+
     def forward(self, gate, attack, decay, sustain, release, sample_rate=None):
+        """Generate an envelope given ADSR parameters and a gate signal.
+
+        Responds to the gate signal by generating an ADSR envelope with the
+        given attack, decay, sustain, release parameters. If sample rate is
+        not specified, parameters are interpreted in terms of samples. If it
+        is, they are interpreted as times in seconds.
+
+        Args:
+            gate (torch.Tensor): The sample-wise gate signal used to trigger
+                the envelope. A change from zero to one signifies the start of
+                an attack portion, and a change from one to zero signifies the
+                start of a release portion. Shape can be [T], or [N, T] where
+                T is the time dimension and N is the batch dimension.
+            attack (torch.Tensor): The attack time of the envelope in either
+                seconds or samples (depending on whether the sample_rate is
+                given). Can be of shape [1], or [N, 1], where N is the batch
+                dimension.
+            decay (torch.Tensor): The decay time of the envelope in either
+                seconds or samples (depending on whether the sample_rate is
+                given). Can be of shape [1], or [N, 1], where N is the batch
+                dimension.
+            sustain (torch.Tensor): The sustain value of the envelope given as
+                a value from zero to one, signifying the proportion of the
+                envelope's maximum value at which to sustain.
+            release (torch.Tensor): The release time of the envelope in either
+                seconds or samples (depending on whether the sample_rate is
+                given). Can be of shape [1], or [N, 1], where N is the batch
+                dimension.
+            sample_rate (float, optional): The sample rate in Hz. If not
+                specified, envelope time parameters are interpreted in terms of
+                samples. Otherwise, they are interpreted in seconds. Defaults
+                to None.
+        """
         if sample_rate is not None:
             attack *= sample_rate
             decay *= sample_rate
@@ -14,7 +61,7 @@ class ADSR(torch.nn.Module):
         attack, decay, sustain, release = self._ensure_tensors(
             attack, decay, sustain, release
         )
-        self._validate_input(attack, decay, release)
+        self._validate_input(attack, decay, sustain, release)
 
         # compute time axis
         attack_decay_axis = self._cumsum_resetting_on_value(gate)
@@ -63,6 +110,8 @@ class ADSR(torch.nn.Module):
         return envelope
 
     def _ensure_tensors(self, attack, decay, sustain, release):
+        """Ensure that envelope parameters are in torch.Tensor form.
+        """
         return (
             self._ensure_tensor(attack),
             self._ensure_tensor(decay),
@@ -71,19 +120,23 @@ class ADSR(torch.nn.Module):
         )
 
     def _ensure_tensor(self, input):
+        """Turn a number into a torch.Tensor if it isn't already.
+        """
         return (
             torch.Tensor([input])
             if not isinstance(input, torch.Tensor)
             else input
         )
 
-    def _validate_input(self, attack, decay, release):
+    def _validate_input(self, attack, decay, sustain, release):
         """Ensure no erroneous values are input"""
-        if (attack == 0).any():
+        if (attack <= 0).any():
             raise ValueError("Attack length must be > 0")
-        if (decay == 0).any():
+        if (decay <= 0).any():
             raise ValueError("Decay length must be > 0")
-        if (release == 0).any():
+        if (sustain < 0).any() or (sustain > 1).any():
+            raise ValueError("Sustain must be between 0 and 1")
+        if (release <= 0).any():
             raise ValueError("Release length must be > 0")
 
     def _cumsum_resetting_on_value(self, t, reset_value=0):
