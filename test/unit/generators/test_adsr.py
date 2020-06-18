@@ -2,6 +2,7 @@ import math
 
 import pytest
 import torch
+import torch.nn.functional as F
 
 from gradrack.generators import ADSR
 
@@ -532,48 +533,47 @@ class TestADSREnvelope:
         class DummyNetwork(torch.nn.Module):
             def __init__(self, sample_rate):
                 super().__init__()
-                self.attack = torch.nn.Parameter(
-                    torch.rand(1), True
-                )
-                self.decay = torch.nn.Parameter(
-                    torch.rand(1), True
-                )
+                self.attack = torch.nn.Parameter(torch.rand(1), True)
+                self.decay = torch.nn.Parameter(torch.rand(1), True)
                 self.sustain = torch.nn.Parameter(torch.rand(1), True)
-                self.release = torch.nn.Parameter(
-                    torch.rand(1), True
-                )
+                self.release = torch.nn.Parameter(torch.rand(1), True)
 
                 self.eg = ADSR()
                 self.sample_rate = sample_rate
 
             def forward(self, gate):
+                eps = 1e-7
                 return self.eg(
                     gate,
-                    self.attack,
-                    self.decay,
-                    self.sustain,
-                    self.release,
+                    F.relu(self.attack) + eps,
+                    F.relu(self.decay) + eps,
+                    self.sustain.clamp(0, 1),
+                    F.relu(self.release) + eps,
                     self.sample_rate,
                 )
 
         model = DummyNetwork(sample_rate)
-
-        optim = torch.optim.SGD(model.parameters(), lr=0.001)
-        criterion = torch.nn.MSELoss()
-
         model.train()
 
-        for n in range(100):
+        optim = torch.optim.Adam(model.parameters(), lr=0.01)
+        criterion = torch.nn.MSELoss()
+
+        test_epochs = 500
+
+        for n in range(test_epochs):
             optim.zero_grad()
             predicted_envelope = model(gate)
             loss = criterion(predicted_envelope, target_envelope)
             loss.backward()
             optim.step()
 
-            if n % 10 == 0 or n == 49:
+            if n % 10 == 0:
                 print("Epoch %d -- loss %.5f" % (n + 1, loss.item()))
 
-        torch.testing.assert_allclose(target_envelope, predicted_envelope)
+        assert loss.item() < 1e-4
+        torch.testing.assert_allclose(
+            target_envelope, predicted_envelope, atol=1e-2, rtol=0
+        )
 
     def _compute_time_constants(self, decay, release):
         return (

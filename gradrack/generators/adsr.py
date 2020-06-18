@@ -109,6 +109,10 @@ class ADSR(torch.nn.Module):
         envelope = attack_section + decay_section + release_section
         return envelope
 
+    def backward(self):
+        print('sup')
+        super().backward()
+
     def _ensure_tensors(self, attack, decay, sustain, release):
         """Ensure that envelope parameters are in torch.Tensor form.
         """
@@ -167,8 +171,12 @@ class ADSR(torch.nn.Module):
     def _cumprod_resetting_on_zero(self, t):
         """Independently calculates the cumulative product of each region of
         the tensor separated by zeros. Calculated across the last dim."""
-        log_t = torch.log(t)
-        cum_log_t = self._cumsum_resetting_on_value(log_t, float("-Inf"))
+        big_negative_number = -1e10
+
+        log_t = t.clone()
+        log_t[t != 0] = torch.log(t[t != 0])
+        log_t[t == 0] = big_negative_number
+        cum_log_t = self._cumsum_resetting_on_value(log_t, big_negative_number)
         return torch.exp(cum_log_t)
 
     def _shift_tensor_along_dim_with_zero_padding(
