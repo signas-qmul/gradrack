@@ -144,6 +144,53 @@ class TestADSREnvelope:
             gate, attack, decay, sustain, release, None, expected_output
         )
 
+    def test_generates_simple_envelope_across_batches(self):
+        gate = torch.Tensor(
+            [[1, 1, 1, 1, 0, 0, 0, 0], [0, 0, 1, 1, 1, 1, 0, 0]]
+        )
+        attack = torch.Tensor([[2], [3]])
+        decay = torch.Tensor([[2], [1]])
+        sustain = torch.Tensor([[0.5], [0.0]])
+        release = torch.Tensor([[4], [2]])
+
+        alpha_d, alpha_r = self._compute_time_constants(decay, release)
+
+        a_attack_section = self._generate_attack_portion(0, attack[0], 2)
+        a_decay_section = self._generate_exponential_decay(
+            1, alpha_d[0], 2, sustain[0]
+        )
+        a_release_section = self._generate_exponential_decay(
+            a_decay_section[-1], alpha_r[0], 4
+        )
+        a_expected_output = torch.cat(
+            (a_attack_section, a_decay_section, a_release_section)
+        )
+
+        b_initial_section = torch.Tensor([0, 0])
+        b_attack_section = self._generate_attack_portion(0, attack[1], 3)
+        b_decay_section = self._generate_exponential_decay(
+            1, alpha_d[1], 1, sustain[1]
+        )
+        b_release_section = self._generate_exponential_decay(
+            b_decay_section[-1], alpha_r[1], 2
+        )
+        b_expected_output = torch.cat(
+            (
+                b_initial_section,
+                b_attack_section,
+                b_decay_section,
+                b_release_section,
+            )
+        )
+
+        expected_output = torch.stack(
+            (a_expected_output, b_expected_output), 0
+        )
+
+        self.check_correctly_generates_envelope(
+            gate, attack, decay, sustain, release, None, expected_output
+        )
+
     def test_generates_multiple_envelopes_from_retriggering_gate(self):
         gate = torch.Tensor([0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0])
         attack = 2
