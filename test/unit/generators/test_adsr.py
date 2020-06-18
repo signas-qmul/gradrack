@@ -508,6 +508,73 @@ class TestADSREnvelope:
             gate, attack, decay, sustain, release, None,
         )
 
+    def test_can_backpropogate_through_module(self):
+        sample_rate = 100
+        attack = torch.rand(1)
+        decay = torch.rand(1)
+        sustain = torch.rand(1)
+        release = torch.rand(1)
+
+        gate = torch.cat(
+            (
+                torch.zeros(100),
+                torch.ones(100),
+                torch.zeros(100),
+                torch.ones(100),
+                torch.zeros(100),
+            )
+        )
+
+        target_envelope = self.adsr(
+            gate, attack, decay, sustain, release, sample_rate
+        )
+
+        class DummyNetwork(torch.nn.Module):
+            def __init__(self, sample_rate):
+                super().__init__()
+                self.attack = torch.nn.Parameter(
+                    torch.rand(1), True
+                )
+                self.decay = torch.nn.Parameter(
+                    torch.rand(1), True
+                )
+                self.sustain = torch.nn.Parameter(torch.rand(1), True)
+                self.release = torch.nn.Parameter(
+                    torch.rand(1), True
+                )
+
+                self.eg = ADSR()
+                self.sample_rate = sample_rate
+
+            def forward(self, gate):
+                return self.eg(
+                    gate,
+                    self.attack,
+                    self.decay,
+                    self.sustain,
+                    self.release,
+                    self.sample_rate,
+                )
+
+        model = DummyNetwork(sample_rate)
+
+        optim = torch.optim.SGD(model.parameters(), lr=0.001)
+        criterion = torch.nn.MSELoss()
+
+        model.train()
+
+        for n in range(100):
+            optim.zero_grad()
+            predicted_envelope = model(gate)
+            loss = criterion(predicted_envelope, target_envelope)
+            loss.backward()
+            optim.step()
+
+            if n % 10 == 0 or n == 49:
+                print("Epoch %d -- loss %.5f" % (n + 1, loss.item()))
+
+        torch.testing.assert_allclose(target_envelope, predicted_envelope)
+
     def _compute_time_constants(self, decay, release):
         return (
             self._compute_time_constant(decay),

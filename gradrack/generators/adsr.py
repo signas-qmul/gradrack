@@ -54,9 +54,9 @@ class ADSR(torch.nn.Module):
                 to None.
         """
         if sample_rate is not None:
-            attack *= sample_rate
-            decay *= sample_rate
-            release *= sample_rate
+            attack = attack * sample_rate
+            decay = decay * sample_rate
+            release = release * sample_rate
 
         attack, decay, sustain, release = self._ensure_tensors(
             attack, decay, sustain, release
