@@ -402,6 +402,19 @@ class TestADSREnvelope:
             gate, attack, decay, sustain, release, sample_rate, expected_output
         )
 
+    def test_can_generate_with_long_attack_and_short_decay_and_release(self):
+        sr = 44100
+        gate = torch.cat((torch.ones(3 * sr), torch.zeros(sr)))
+        attack = 0.7465186757369614
+        decay = 0.0020226757369614518
+        sustain = 0.23
+        release = 2.2675736961451248e-05
+
+        output = self.adsr(
+            gate, attack, decay, sustain, release, sample_rate=sr
+        )
+        assert not torch.isnan(output).any()
+
     def check_throws_value_error(
         self,
         dummy_gate,
@@ -510,7 +523,7 @@ class TestADSREnvelope:
         )
 
     def test_can_backpropogate_through_module(self):
-        sample_rate = 100
+        sample_rate = 1
         attack = torch.rand(1)
         decay = torch.rand(1)
         sustain = torch.rand(1)
@@ -569,11 +582,13 @@ class TestADSREnvelope:
 
             if n % 10 == 0:
                 print("Epoch %d -- loss %.5f" % (n + 1, loss.item()))
+            all_close = torch.allclose(
+                target_envelope, predicted_envelope, atol=1e-3, rtol=0
+            )
+            if all_close:
+                break
 
-        assert loss.item() < 1e-4
-        torch.testing.assert_allclose(
-            target_envelope, predicted_envelope, atol=1e-2, rtol=0
-        )
+        assert all_close
 
     def _compute_time_constants(self, decay, release):
         return (

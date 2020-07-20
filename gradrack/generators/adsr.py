@@ -54,9 +54,9 @@ class ADSR(torch.nn.Module):
                 to None.
         """
         if sample_rate is not None:
-            attack = attack * sample_rate
-            decay = decay * sample_rate
-            release = release * sample_rate
+            attack = max(attack * sample_rate, 1)
+            decay = max(decay * sample_rate, 1)
+            release = max(release * sample_rate, 1)
 
         attack, decay, sustain, release = self._ensure_tensors(
             attack, decay, sustain, release
@@ -79,7 +79,9 @@ class ADSR(torch.nn.Module):
         # (start with attack regions counting from zero)
         attack_slope = attack_decay_axis / attack
 
-        decay_slope = decay_time_constant ** (attack_decay_axis - attack)
+        decay_slope = decay_time_constant ** (
+            (attack_decay_axis - attack) * decay_mask
+        )
         decay_slope = sustain + (1 - sustain) * decay_slope
 
         # Alternately update attack and release segments:
@@ -110,7 +112,7 @@ class ADSR(torch.nn.Module):
         return envelope
 
     def backward(self):
-        print('sup')
+        print("sup")
         super().backward()
 
     def _ensure_tensors(self, attack, decay, sustain, release):
