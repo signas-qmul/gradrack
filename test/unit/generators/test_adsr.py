@@ -402,13 +402,30 @@ class TestADSREnvelope:
             gate, attack, decay, sustain, release, sample_rate, expected_output
         )
 
-    def test_can_generate_with_long_attack_and_short_decay_and_release(self):
+    def test_no_nans_with_long_attack_and_short_release(self):
         sr = 44100
         gate = torch.cat((torch.ones(3 * sr), torch.zeros(sr)))
         attack = 0.7465186757369614
         decay = 0.0020226757369614518
         sustain = 0.23
         release = 2.2675736961451248e-05
+
+        output = self.adsr(
+            gate, attack, decay, sustain, release, sample_rate=sr
+        )
+        assert not torch.isnan(output).any()
+
+    def test_no_nans_with_long_attack_and_short_release_across_batches(self):
+        sr = 44100
+        gate = torch.cat((torch.ones(3 * sr), torch.zeros(sr)))
+        attack = torch.Tensor([[0.7465186757369614], [0.7465186757369614]])
+        decay = torch.Tensor(
+            [[0.0020226757369614518], [0.0020226757369614518]]
+        )
+        sustain = torch.Tensor([[0.23], [0.23]])
+        release = torch.Tensor(
+            [[2.2675736961451248e-05], [2.2675736961451248e-05]]
+        )
 
         output = self.adsr(
             gate, attack, decay, sustain, release, sample_rate=sr

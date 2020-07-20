@@ -53,14 +53,15 @@ class ADSR(torch.nn.Module):
                 samples. Otherwise, they are interpreted in seconds. Defaults
                 to None.
         """
-        if sample_rate is not None:
-            attack = max(attack * sample_rate, 1)
-            decay = max(decay * sample_rate, 1)
-            release = max(release * sample_rate, 1)
 
         attack, decay, sustain, release = self._ensure_tensors(
             attack, decay, sustain, release
         )
+
+        if sample_rate is not None:
+            attack = torch.clamp(attack * sample_rate, min=1)
+            decay = torch.clamp(decay * sample_rate, min=1)
+            release = torch.clamp(release * sample_rate, min=1)
         self._validate_input(attack, decay, sustain, release)
 
         # compute time axis

@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="gradrack",
-    version="0.0.1",
+    version="0.0.2",
     author="SIGNAS",
     author_email="b.j.hayes@se19.qmul.ac.uk",
     description="A differentiable library of synthesiser components",
